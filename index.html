@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="扶起跌倒的红烧肉 : " />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>扶起跌倒的红烧肉</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/sjkyspa">View on GitHub</a>
+
+          <h1 id="project_title">扶起跌倒的红烧肉</h1>
+          <h2 id="project_tagline"></h2>
+
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h3>
+<a name="express" class="anchor" href="#express"><span class="octicon octicon-link"></span></a>Express</h3>
+
+<h6>
+<a name="%E5%AE%89%E8%A3%85express-%E8%84%9A%E6%89%8B%E6%9E%B6" class="anchor" href="#%E5%AE%89%E8%A3%85express-%E8%84%9A%E6%89%8B%E6%9E%B6"><span class="octicon octicon-link"></span></a>安装express 脚手架</h6>
+
+<p>sudo npm install -g express-generator</p>
+
+<p>如果以前安装过express-generator, 有可能会出现以下错误   </p>
+
+<pre><code>Refusing to delete: /usr/local/bin/express
+</code></pre>
+
+<p>此时可以去删除/usr/local/bin/express link所指定的目录</p>
+
+<pre><code>cd /usr/local/bin/express
+ls -ltrch express
+// 此时的结果如下
+express -&gt; ../lib/node_modules/express/bin/express
+rm -rf ../lib/node_modules/express/bin/express
+rm -rf express
+// 此时安装应该就可以成功了
+sudo npm install -g express-generator
+</code></pre>
+
+<h6>
+<a name="1-%E5%88%9D%E5%A7%8B%E5%8C%96%E9%A1%B9%E7%9B%AE" class="anchor" href="#1-%E5%88%9D%E5%A7%8B%E5%8C%96%E9%A1%B9%E7%9B%AE"><span class="octicon octicon-link"></span></a>1. 初始化项目</h6>
+
+<p>npm install</p>
+
+<h5>
+<a name="express-test" class="anchor" href="#express-test"><span class="octicon octicon-link"></span></a>Express Test</h5>
+
+<p>npm install supertest --save-dev
+npm install should --save-dev</p>
+
+<pre><code>request = require('supertest');
+require("should");
+var app = require("../app");
+
+describe("Product", function () {
+    describe("GET", function () {
+        describe("with exist product", function () {
+            it('should get 200', function (done) {
+                request(app)
+                    .get('/products/1')
+                    .expect(200)
+                    .end(function(err, res) {
+                        if(err) {
+                            done(err);
+                        }
+                        done();
+                    });
+            });
+        });
+    });
+});
+
+</code></pre>
+
+<h5>
+<a name="express-mongoose" class="anchor" href="#express-mongoose"><span class="octicon octicon-link"></span></a>Express mongoose</h5>
+
+<p><strong>特别要注意require(app) 和require（Product）的顺序</strong>
+有以下两种顺序</p>
+
+<pre><code>var Order = require('../models/order');
+var User = require("../models/user");
+var Product = require("../models/product");
+
+var app = require("../app");
+</code></pre>
+
+<pre><code>var app = require("../app");
+var Product = moogoose.model("Product");
+var User = moogoose.model("User");
+var Order = moogoose.model("Order");
+</code></pre>
+
+<p>npm install mockgoose --save-dev
+npm install mongoose --save</p>
+
+<p>mockgoose 和require的app的顺序有很强的联系，如果出现timeout，很有可能是因为mockgoose和app的require顺序写反了。此时可以使用如下方式解决</p>
+
+<pre><code>var Product = mongoose.model("Product")
+</code></pre>
+
+<p>一般我们会在app.js中初始化我们的connection，但是这个connection在APP中初始化，所以每次我们require一次app.js，就会出现连接一次，如果第二次require没有将mongoose mock掉，此时会出现原来的测试挂掉的情况。
+此时有两种解决方法：</p>
+
+<ol>
+<li>
+<p>在runner里面直接将mongoose mock掉</p>
+
+<pre><code>gulp.task('test', function() {
+var mockgoose = require('mockgoose');
+var mongoose = require('mongoose');
+mockgoose(mongoose);
+gulp.src('./test/*.js')
+    .pipe(jasmine())
+});
+</code></pre>
+</li>
+<li>
+<p>在所有的测试中添加mongoose的mock代码   </p>
+
+<pre><code>var mongoose = require('mongoose');
+var mockgoose = require('mockgoose');
+mockgoose(mongoose);
+</code></pre>
+</li>
+</ol><h5>
+<a name="mongo" class="anchor" href="#mongo"><span class="octicon octicon-link"></span></a>Mongo</h5>
+
+<p>添加一个embeded的resource
+使用schema</p>
+
+<p>Object {} has no method 'cast'
+很多时候是由于mongoose没有指定对相应的schema
+可以使用如下的方法添加schema</p>
+
+<pre><code>var User = new Schema({
+    name: {type: String, required: true},
+    phone: {type: String, required: true},
+    orders: [mongoose.model("Order").schema]
+});
+</code></pre>
+
+<p>然后使用如下的方法为user,创建一个order</p>
+
+<pre><code>var order = new Order({address: req.param("address"), phone: req.param("phone"), name: req.param("name")});
+user.orders.push(order);
+</code></pre>
+
+<p>MissingSchemaError: Schema hasn't been registered for model "Product"
+product: {type: ObjectId, ref: mongoose.model("Product").schema}
+这是由于Product还没有被实例化，可以使用require（"./product"）来解决</p>
+
+<p>TypeError: Invalid value for schema path <code>product.type</code>
+这是因为我们定义的时候使用的一下的方式</p>
+
+<pre><code>var ObjectId = mongoose.ObjectId
+product: {type: ObjectId, ref: Product.schema},
+// 需要使用的一下的方式
+var ObjectId = mongoose.Schema.ObjectId
+product: {type: ObjectId, ref: Product.schema},
+</code></pre>
+
+<h5>
+<a name="express-gulp" class="anchor" href="#express-gulp"><span class="octicon octicon-link"></span></a>Express Gulp</h5>
+
+<pre><code>npm install -g gulp
+npm install --save-dev gulp
+
+
+
+// gulpfile.js
+var gulp = require('gulp');
+
+gulp.task('default', function() {
+});
+</code></pre>
+
+<p>上面就是一个很简单的没有任何配置的gulp的环境，我们可以在上面加些简单的任务让gulp帮我们跑起来</p>
+
+<pre><code>var jasmine = require('gulp-jasmine');
+
+gulp.task('test', function() {
+    glup.src('./app/test/**/*.js')
+        .pipe(jasmine())
+});
+</code></pre>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-52640088-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+
+  </body>
+</html>
